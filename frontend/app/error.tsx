@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
 
 import { RetryableError } from "@/components/ui/RetryableError";
+import { ApiError } from "@/lib/api/errors";
 import { captureException } from "@/lib/error-tracking/client";
 
 /**
@@ -51,6 +52,7 @@ export default function RouteError({ error, reset }: { error: Error & { digest?:
     captureException(error, { tags: { source: "route_error_boundary" }, extra: { digest: error.digest } });
   }, [error]);
 
+  const serviceUnavailable = ApiError.isServiceUnavailable(error);
   const missingCapability = detectMissingCapability(error);
   const sessionPersistenceFailure = !missingCapability && isSessionPersistenceError(error);
 
@@ -71,6 +73,12 @@ export default function RouteError({ error, reset }: { error: Error & { digest?:
       <div className="w-full space-y-3">
         <RetryableError
           error={error}
+          title={serviceUnavailable ? "Verification service is temporarily unavailable" : "This page couldn't be loaded"}
+          fallbackMessage={
+            serviceUnavailable
+              ? "We couldn't reach the verification service right now. Your data is safe — please try again in a moment."
+              : "Something went wrong while loading this page."
+          }
           title={title}
           fallbackMessage={fallbackMessage}
           retrying={isPending}
@@ -81,6 +89,19 @@ export default function RouteError({ error, reset }: { error: Error & { digest?:
             })
           }
         />
+        {serviceUnavailable && (
+          <p className="text-center text-sm text-gray-600 dark:text-gray-300">
+            Still having trouble?{" "}
+            <a href="/" className="font-medium text-blue-600 underline hover:text-blue-700 dark:text-blue-400">
+              Return to home
+            </a>{" "}
+            or{" "}
+            <a href="/verify" className="font-medium text-blue-600 underline hover:text-blue-700 dark:text-blue-400">
+              start a new verification
+            </a>
+            .
+          </p>
+        )}
         {error.digest && (
           <p className="text-center text-xs text-gray-500 dark:text-gray-400">
             Error reference: <code className="select-all font-mono">{error.digest}</code>

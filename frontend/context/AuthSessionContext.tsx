@@ -43,10 +43,16 @@ interface IssuedSession {
   refreshToken: string;
 }
 
+export type AuthRole = AuthSessionInfo["role"];
+
 export interface AuthSessionValue {
   status: AuthSessionStatus;
   session: AuthSessionInfo | null;
   error: ApiClientError | null;
+  // Role of the current actor, or null when there is no usable session.
+  role: AuthRole | null;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
   // True once the persisted session has been read and validated on mount.
   hydrated: boolean;
   // Set when the browser refused to persist or read the session (private mode, quota, corrupt data).
@@ -295,7 +301,23 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
     return tokens.current?.accessToken ?? null;
   }, [refresh]);
 
+  const isAuthenticated = status === "active" || status === "refreshing";
+  const role = isAuthenticated ? (session?.role ?? null) : null;
+
   const value = useMemo<AuthSessionValue>(
+    () => ({
+      status,
+      session,
+      error,
+      role,
+      isAuthenticated,
+      isAdmin: role === "admin",
+      login,
+      logout,
+      refresh,
+      getAccessToken,
+    }),
+    [status, session, error, role, isAuthenticated, login, logout, refresh, getAccessToken],
     () => ({ status, session, error, hydrated, persistenceError, login, logout, refresh, getAccessToken }),
     [status, session, error, hydrated, persistenceError, login, logout, refresh, getAccessToken],
   );

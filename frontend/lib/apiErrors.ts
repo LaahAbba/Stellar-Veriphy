@@ -63,6 +63,12 @@ export class ApiError extends Error {
     const s = this.httpStatus;
     return s === 0 || s === 408 || s === 425 || s === 429 || s >= 500;
   }
+
+  /** Verification service is temporarily unavailable (gateway/timeout/network). */
+  get isServiceUnavailable(): boolean {
+    const s = this.httpStatus;
+    return s === 0 || s === 502 || s === 503 || s === 504;
+  }
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -89,6 +95,9 @@ export function isAccessDeniedError(error: unknown): error is ApiError {
 }
 
 const NETWORK_MESSAGE = "Could not reach the server. Check your connection and try again.";
+
+const SERVICE_UNAVAILABLE_MESSAGE =
+  "The verification service is temporarily unavailable. Please try again in a moment.";
 
 export function createRequestId(): string {
   const random =
@@ -242,6 +251,13 @@ export function describeError(error: unknown, fallback = "Something went wrong."
     if (error.isNetworkError) {
       return { title: "Connection problem", message: error.message, retryable: true, requestId: error.requestId };
     }
+    if (error.isServiceUnavailable) {
+      return {
+        title: "Verification service is temporarily unavailable",
+        message: error.message || SERVICE_UNAVAILABLE_MESSAGE,
+        retryable: true,
+        retryAfterSeconds: error.retryAfterSeconds,
+        requestId: error.requestId,
     if (error.isAccessDenied) {
       const permission = error.accessDenied?.requiredPermission ?? error.accessDenied?.requiredScope;
       return {
